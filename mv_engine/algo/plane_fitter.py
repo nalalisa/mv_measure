@@ -6,7 +6,7 @@ from mv_engine.algo.preprocessing import downsample_voxel_grid
 from mv_engine.core.data_models import Plane3D
 from mv_engine.core.types import PointCloud3D, Vector3D
 from mv_engine.math.fourier import fit_fourier_series, reconstruct_fourier_curve
-from mv_engine.math.geometry import normalize_vector
+from mv_engine.math.geometry import fit_plane_pca, normalize_vector, project_points_to_plane
 
 
 def _enforce_positive_z_axis(axis: Vector3D) -> Vector3D:
@@ -22,6 +22,12 @@ def extract_annulus_plane(
     curve_samples: int = 360,
 ) -> tuple[Plane3D, PointCloud3D]:
     filtered_points = downsample_voxel_grid(points, voxel_size)
+    if filtered_points.shape[0] < 3:
+        raise ValueError("At least 3 annulus points are required.")
+    if filtered_points.shape[0] < 8:
+        plane = fit_plane_pca(filtered_points)
+        projected = project_points_to_plane(filtered_points, plane).astype(np.float64)
+        return plane, projected
 
     center = np.mean(filtered_points, axis=0, dtype=np.float64)
     centered_points = filtered_points - center
